@@ -80,4 +80,17 @@ urlpatterns = [
     
     # 14. REPORTE GENERAL CONSOLIDADO (PCC + SENSORES)
     path('reporte-general/pdf/', views.generar_reporte_general_pdf, name='generar_reporte_general_pdf'),
+    
+    # 15. SISTEMA DE CÁLCULO DE PÉRDIDAS ECONÓMICAS (COSTOS SENSORES)
+    path('perdidas-economicas/', views.vista_perdidas_economicas, name='perdidas_economicas'),
+    path('perdidas-economicas/registrar/', views.vista_registrar_inactividad, name='registrar_inactividad'),
+    path('perdidas-economicas/editar/<int:pk>/', views.vista_editar_inactividad, name='editar_inactividad'),
+    path('perdidas-economicas/reporte/', views.vista_reporte_perdidas, name='reporte_perdidas'),
+    path('api/perdidas/sistemas/', views.api_obtener_sistemas_costos, name='api_obtener_sistemas_costos'),
+    path('api/perdidas/guardar/', views.api_guardar_inactividad, name='api_guardar_inactividad'),
+    path('api/perdidas/listar/', views.api_listar_inactividades, name='api_listar_inactividades'),
+    path('api/perdidas/eliminar/<int:pk>/', views.api_eliminar_inactividad, name='api_eliminar_inactividad'),
+    path('api/perdidas/resolver/<int:pk>/', views.api_resolver_inactividad, name='api_resolver_inactividad'),
+    path('api/perdidas/estadisticas/', views.api_estadisticas_perdidas, name='api_estadisticas_perdidas'),
+    path('perdidas-economicas/pdf/', views.generar_pdf_perdidas, name='generar_pdf_perdidas'),
 ]

@@ -30,3 +30,14 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Archivos temporales de importación
+incidencias_temp.csv
+*.xlsm
+*.xlsx
+
+# Scripts de verificación temporales
+verificar_*.py
+check_*.py
+analizar_*.py
+test_turnos_dashboard.py

@@ -1,0 +1,261 @@
+{% extends 'base_sidebar.html' %}
+{% load static %}
+
+{% block title %}Pérdidas Económicas - Sensores{% endblock %}
+{% block page_title %}Sistema de Pérdidas Económicas{% endblock %}
+{% block page_subtitle %}Monitoreo de costos por inactividad de sensores IDEAL CONTROL{% endblock %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{% static 'css/formulario.css' %}">
+<style>
+    .sensor-section { background: white; padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-left: 4px solid #e67e22; }
+    .sensor-section h3 { color: #e67e22; display: flex; align-items: center; gap: 12px; font-size: 18px; margin-top: 0; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0; }
+    .section-icon { background: #e67e22; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+
+    .section-blue { border-left-color: #17a2b8; }
+    .section-blue h3 { color: #17a2b8; }
+    .section-blue .section-icon { background: #17a2b8; }
+
+    .section-teal { border-left-color: #008b8b; }
+    .section-teal h3 { color: #008b8b; }
+    .section-teal .section-icon { background: #008b8b; }
+
+    .section-red { border-left-color: #dc3545; }
+    .section-red h3 { color: #dc3545; }
+    .section-red .section-icon { background: #dc3545; }
+
+    /* Botones de acción */
+    .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 25px; }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+    .btn-primary { background: linear-gradient(135deg, #00b4d8, #0077b6); color: white; }
+    .btn-primary:hover { box-shadow: 0 4px 15px rgba(0,180,216,0.4); transform: translateY(-2px); color: white; }
+    .btn-success { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; }
+    .btn-success:hover { box-shadow: 0 4px 15px rgba(40,167,69,0.4); transform: translateY(-2px); color: white; }
+    .btn-info { background: linear-gradient(135deg, #6f42c1, #5a32a3); color: white; }
+    .btn-info:hover { box-shadow: 0 4px 15px rgba(111,66,193,0.4); transform: translateY(-2px); color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+
+    /* Tarjetas de estadísticas */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 25px; }
+    .stat-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; position: relative; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+    .stat-card.card-total::before { background: linear-gradient(135deg, #00b4d8, #0077b6); }
+    .stat-card.card-activas::before { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    .stat-card.card-resueltas::before { background: linear-gradient(135deg, #28a745, #1e7e34); }
+    .stat-card.card-perdidas::before { background: linear-gradient(135deg, #e67e22, #d35400); }
+    .stat-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 20px; color: white; }
+    .stat-icon.icon-total { background: linear-gradient(135deg, #00b4d8, #0077b6); }
+    .stat-icon.icon-activas { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    .stat-icon.icon-resueltas { background: linear-gradient(135deg, #28a745, #1e7e34); }
+    .stat-icon.icon-perdidas { background: linear-gradient(135deg, #e67e22, #d35400); }
+    .stat-value { font-size: 2.2em; font-weight: 800; line-height: 1.1; margin-bottom: 4px; }
+    .stat-value.val-total { color: #0077b6; }
+    .stat-value.val-activas { color: #e74c3c; }
+    .stat-value.val-resueltas { color: #28a745; }
+    .stat-value.val-perdidas { color: #e67e22; }
+    .stat-label { font-size: 0.85em; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-sub { font-size: 0.8em; color: #999; margin-top: 4px; }
+
+    /* Tabla */
+    .table-container { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th { background: linear-gradient(135deg, #1e3a5f 0%, #0a1929 100%); color: white; padding: 14px 12px; text-align: left; font-weight: 600; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+    .data-table th:first-child { border-radius: 8px 0 0 0; }
+    .data-table th:last-child { border-radius: 0 8px 0 0; }
+    .data-table td { padding: 14px 12px; border-bottom: 1px solid #e9ecef; font-size: 0.9em; vertical-align: middle; }
+    .data-table tr:hover { background-color: #f8f9fa; }
+    .data-table tr:last-child td { border-bottom: none; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.78em; font-weight: 700; letter-spacing: 0.3px; }
+    .badge-activa { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; }
+    .badge-resuelta { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; }
+    .badge-en-curso { background: linear-gradient(135deg, #ffc107, #e0a800); color: #333; }
+
+    .text-muted-custom { color: #aaa; font-style: italic; }
+    .perdida-valor { font-weight: 700; color: #c0392b; }
+    .perdida-clp { font-weight: 600; color: #e67e22; }
+
+    .empty-state { text-align: center; padding: 50px 20px; color: #999; }
+    .empty-state i { font-size: 48px; margin-bottom: 15px; display: block; color: #ddd; }
+    .empty-state p { font-size: 1.1em; margin-bottom: 20px; }
+
+    .action-cell { display: flex; gap: 6px; }
+    .btn-action { width: 32px; height: 32px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; border: none; cursor: pointer; transition: all 0.2s; font-size: 13px; }
+    .btn-edit { background: #17a2b8; color: white; text-decoration: none; }
+    .btn-edit:hover { background: #138496; transform: scale(1.1); color: white; }
+    .btn-resolve { background: #28a745; color: white; }
+    .btn-resolve:hover { background: #218838; transform: scale(1.1); }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'registrar_inactividad' %}" class="header-btn">
+    <i class="fas fa-plus"></i> Nuevo Registro
+</a>
+{% endblock %}
+
+{% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<!-- Botones de acción -->
+<div class="action-buttons">
+    <a href="{% url 'registrar_inactividad' %}" class="btn btn-primary">
+        <i class="fas fa-plus-circle"></i> Registrar Inactividad
+    </a>
+    <a href="{% url 'reporte_perdidas' %}" class="btn btn-info">
+        <i class="fas fa-chart-bar"></i> Ver Reporte Completo
+    </a>
+    <button class="btn btn-success" onclick="exportarExcel()">
+        <i class="fas fa-file-excel"></i> Exportar a Excel
+    </button>
+</div>
+
+<!-- Tarjetas de estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card card-total">
+        <div class="stat-icon icon-total"><i class="fas fa-clipboard-list"></i></div>
+        <div class="stat-value val-total">{{ total_registros }}</div>
+        <div class="stat-label">Total Registros</div>
+    </div>
+    <div class="stat-card card-activas">
+        <div class="stat-icon icon-activas"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-value val-activas">{{ registros_activos }}</div>
+        <div class="stat-label">Inactividades Activas</div>
+    </div>
+    <div class="stat-card card-resueltas">
+        <div class="stat-icon icon-resueltas"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-value val-resueltas">{{ registros_resueltos }}</div>
+        <div class="stat-label">Resueltas</div>
+    </div>
+    <div class="stat-card card-perdidas">
+        <div class="stat-icon icon-perdidas"><i class="fas fa-coins"></i></div>
+        <div class="stat-value val-perdidas">{{ perdidas_totales.total_uf|floatformat:2|default:"0.00" }} UF</div>
+        <div class="stat-label">Pérdidas Totales</div>
+        <div class="stat-sub">${{ perdidas_totales.total_clp|floatformat:0|default:"0" }} CLP</div>
+    </div>
+</div>
+
+<!-- Registros recientes -->
+<div class="sensor-section section-blue">
+    <h3><span class="section-icon"><i class="fas fa-list-alt"></i></span> Registros Recientes</h3>
+
+    {% if registros_recientes %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Centro</th>
+                    <th>Sistema</th>
+                    <th>Sensor</th>
+                    <th>Fecha Inicio</th>
+                    <th>Duración</th>
+                    <th>Pérdida (UF)</th>
+                    <th>Pérdida (CLP)</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros_recientes %}
+                <tr>
+                    <td><strong>{{ registro.costo_sistema.centro.nombre }}</strong></td>
+                    <td>{{ registro.costo_sistema.sistema }}</td>
+                    <td>
+                        {% if registro.sensor %}
+                            {{ registro.sensor.equipo }}
+                        {% else %}
+                            <span class="text-muted-custom">Todo el sistema</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ registro.fecha_inicio|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if registro.duracion_dias %}
+                            {{ registro.duracion_dias|floatformat:1 }} dias
+                        {% else %}
+                            <span class="badge badge-en-curso">En curso</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if registro.perdida_uf %}
+                            <span class="perdida-valor">{{ registro.perdida_uf|floatformat:4 }}</span>
+                        {% else %}
+                            <span class="text-muted-custom">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if registro.perdida_clp %}
+                            <span class="perdida-clp">${{ registro.perdida_clp|floatformat:0 }}</span>
+                        {% else %}
+                            <span class="text-muted-custom">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if registro.esta_activa %}
+                            <span class="badge badge-activa"><i class="fas fa-times-circle"></i> Activa</span>
+                        {% else %}
+                            <span class="badge badge-resuelta"><i class="fas fa-check"></i> Resuelta</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-cell">
+                            <a href="{% url 'editar_inactividad' registro.id %}" class="btn-action btn-edit" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if registro.esta_activa %}
+                            <button class="btn-action btn-resolve" onclick="resolverInactividad({{ registro.id }})" title="Marcar como resuelta">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <p>No hay registros de inactividad</p>
+        <a href="{% url 'registrar_inactividad' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Crear Primer Registro
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function resolverInactividad(id) {
+    if (!confirm('Marcar esta inactividad como resuelta?')) return;
+
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch('/api/perdidas/resolver/' + id + '/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({})
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        alert('Error al resolver inactividad');
+    });
+}
+
+function exportarExcel() {
+    alert('Funcionalidad de exportacion en desarrollo');
+}
+</script>
+{% endblock %}

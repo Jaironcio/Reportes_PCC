@@ -1,0 +1,558 @@
+{% extends 'base_sidebar.html' %}
+{% load static %}
+
+{% block title %}{% if modo_edicion %}Editar{% else %}Registrar{% endif %} Inactividad de Sensor{% endblock %}
+{% block page_title %}{% if modo_edicion %}Editar{% else %}Registrar{% endif %} Inactividad de Sensor{% endblock %}
+{% block page_subtitle %}Complete el formulario para calcular las pérdidas económicas por sensor fuera de servicio{% endblock %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{% static 'css/formulario.css' %}">
+<style>
+    .sensor-section { background: white; padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-left: 4px solid #e67e22; }
+    .sensor-section h3 { color: #e67e22; display: flex; align-items: center; gap: 12px; font-size: 18px; margin-top: 0; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0; }
+    .section-icon { background: #e67e22; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-weight: 600; margin-bottom: 8px; color: #333; font-size: 0.9em; }
+    .form-group input, .form-group select, .form-group textarea { padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.3s; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #e67e22; box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1); }
+    .form-group select:disabled { background-color: #f5f5f5; cursor: not-allowed; }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-group .hint { font-size: 0.8em; color: #999; margin-top: 4px; }
+
+    .section-blue { border-left-color: #17a2b8; }
+    .section-blue h3 { color: #17a2b8; }
+    .section-blue .section-icon { background: #17a2b8; }
+
+    .section-purple { border-left-color: #6f42c1; }
+    .section-purple h3 { color: #6f42c1; }
+    .section-purple .section-icon { background: #6f42c1; }
+
+    .section-green { border-left-color: #28a745; }
+    .section-green h3 { color: #28a745; }
+    .section-green .section-icon { background: #28a745; }
+
+    .section-red { border-left-color: #dc3545; }
+    .section-red h3 { color: #dc3545; }
+    .section-red .section-icon { background: #dc3545; }
+
+    .section-teal { border-left-color: #008b8b; }
+    .section-teal h3 { color: #008b8b; }
+    .section-teal .section-icon { background: #008b8b; }
+
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary { background: linear-gradient(135deg, #00b4d8, #0077b6); color: white; }
+    .btn-primary:hover { box-shadow: 0 4px 15px rgba(0,180,216,0.4); transform: translateY(-2px); }
+    .btn-success { background: #28a745; color: white; }
+    .btn-success:hover { background: #218838; }
+    .btn-secondary { background: #6c757d; color: white; text-decoration: none; }
+    .btn-secondary:hover { background: #5a6268; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .button-group { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+    .cost-card { background: linear-gradient(135deg, #1e3a5f 0%, #0a1929 100%); color: white; padding: 20px; border-radius: 10px; margin-top: 15px; display: none; }
+    .cost-card h4 { margin: 0 0 15px 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .cost-row { display: flex; justify-content: space-between; padding: 10px 15px; background: rgba(255,255,255,0.1); border-radius: 6px; margin-bottom: 8px; }
+    .cost-row .label { font-size: 0.9em; opacity: 0.9; }
+    .cost-row .value { font-weight: 700; font-size: 1em; }
+
+    .perdida-card { background: linear-gradient(135deg, #fff3cd, #ffe69c); border: 2px solid #ffc107; padding: 25px; border-radius: 12px; margin-top: 20px; display: none; }
+    .perdida-card h4 { color: #856404; margin: 0 0 15px 0; display: flex; align-items: center; gap: 10px; font-size: 18px; }
+    .perdida-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .perdida-item { background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .perdida-item .label { font-size: 0.85em; color: #666; margin-bottom: 5px; }
+    .perdida-item .value { font-size: 1.4em; font-weight: 800; color: #c0392b; }
+    .perdida-item .value.green { color: #27ae60; }
+
+    .duracion-alert { background: #e3f2fd; border-left: 4px solid #1976d2; padding: 12px 18px; border-radius: 6px; color: #1565c0; margin-top: 15px; display: none; font-weight: 500; }
+
+    .checkbox-custom { display: flex; align-items: center; gap: 10px; padding: 12px 15px; background: #f8f9fa; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+    .checkbox-custom:hover { background: #e9ecef; }
+    .checkbox-custom input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: #e67e22; }
+    .checkbox-custom label { cursor: pointer; margin: 0; font-weight: 500; color: #333; }
+
+    .alert-container { margin-bottom: 15px; }
+    .alert { padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+    .alert-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+    .alert-error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'perdidas_economicas' %}" class="header-btn">
+    <i class="fas fa-chart-bar"></i> Ver Dashboard
+</a>
+{% endblock %}
+
+{% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+<div id="alertContainer" class="alert-container"></div>
+
+<!-- Sección 1: Identificación del Sistema -->
+<div class="sensor-section">
+    <h3><span class="section-icon"><i class="fas fa-map-marker-alt"></i></span> 1. Identificación del Sistema</h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="centro">Centro / Piscicultura:</label>
+            <select id="centro" required>
+                <option value="">Seleccione un centro</option>
+                {% for centro in centros %}
+                <option value="{{ centro.id }}" {% if modo_edicion and registro.costo_sistema.centro.id == centro.id %}selected{% endif %}>{{ centro.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="sistema">Sistema / Módulo:</label>
+            <select id="sistema" disabled>
+                <option value="">Primero seleccione un centro</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="sensor">Sensor Específico (Opcional):</label>
+            <select id="sensor">
+                <option value="">Todo el sistema</option>
+            </select>
+            <span class="hint">Deje en blanco si la falla afecta a todo el sistema</span>
+        </div>
+    </div>
+
+    <div id="costPreview" class="cost-card">
+        <h4><i class="fas fa-coins"></i> Costos del Sistema Seleccionado</h4>
+        <div class="cost-row">
+            <span class="label">Costo Mensual:</span>
+            <span class="value" id="costoMensual">-</span>
+        </div>
+        <div class="cost-row">
+            <span class="label">Costo Diario (24h):</span>
+            <span class="value" id="costoDiario">-</span>
+        </div>
+        <div class="cost-row">
+            <span class="label">Costo por Hora:</span>
+            <span class="value" id="costoHora">-</span>
+        </div>
+    </div>
+</div>
+
+<!-- Sección 2: Período de Inactividad y Valor UF -->
+<div class="sensor-section section-blue">
+    <h3><span class="section-icon"><i class="fas fa-clock"></i></span> 2. Período de Inactividad</h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="fechaInicio">Fecha y Hora de Inicio:</label>
+            <input type="datetime-local" id="fechaInicio" required {% if modo_edicion %}value="{{ registro.fecha_inicio|date:'Y-m-d\TH:i' }}"{% endif %}>
+        </div>
+        <div class="form-group">
+            <label for="fechaFin">Fecha y Hora de Fin:</label>
+            <input type="datetime-local" id="fechaFin" {% if modo_edicion and registro.fecha_fin %}value="{{ registro.fecha_fin|date:'Y-m-d\TH:i' }}"{% endif %}>
+            <span class="hint">Deje en blanco si la falla aún está activa</span>
+        </div>
+        <div class="form-group">
+            <label for="valorUF">Valor UF del Día ($CLP):</label>
+            <input type="number" id="valorUF" step="0.01" value="39762.52" required {% if modo_edicion and registro.valor_uf_usado %}value="{{ registro.valor_uf_usado }}"{% endif %}>
+            <span class="hint">Consultar en <a href="https://www.sii.cl/valores_y_fechas/uf/uf2026.htm" target="_blank" style="color: #00b4d8;">sii.cl</a> o <a href="https://www.valor-uf.cl/" target="_blank" style="color: #00b4d8;">valor-uf.cl</a></span>
+        </div>
+    </div>
+
+    <div id="duracionCalculada" class="duracion-alert">
+        <i class="fas fa-stopwatch"></i> <strong>Duración calculada:</strong> <span id="duracionTexto"></span>
+    </div>
+</div>
+
+<!-- Sección 3: Detalles de la Falla -->
+<div class="sensor-section section-red">
+    <h3><span class="section-icon"><i class="fas fa-exclamation-triangle"></i></span> 3. Detalles de la Falla</h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="motivo">Motivo de la Inactividad:</label>
+            <select id="motivo" required>
+                {% for value, label in motivos %}
+                <option value="{{ value }}" {% if modo_edicion and registro.motivo == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="responsable">Responsable del Registro:</label>
+            <input type="text" id="responsable" placeholder="Nombre del responsable" required {% if modo_edicion %}value="{{ registro.responsable }}"{% endif %}>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="descripcion">Descripción Detallada:</label>
+        <textarea id="descripcion" rows="4" placeholder="Describa en detalle la falla del sensor o sistema" required>{% if modo_edicion %}{{ registro.descripcion }}{% endif %}</textarea>
+    </div>
+</div>
+
+<!-- Sección 4: Seguimiento con Proveedor -->
+<div class="sensor-section section-purple">
+    <h3><span class="section-icon"><i class="fas fa-phone-alt"></i></span> 4. Seguimiento con Proveedor</h3>
+    <div class="checkbox-custom">
+        <input type="checkbox" id="contactoProveedor" {% if modo_edicion and registro.contacto_proveedor %}checked{% endif %}>
+        <label for="contactoProveedor">¿Se contactó al proveedor (IDEAL CONTROL)?</label>
+    </div>
+
+    <div id="proveedorDetalles" style="display: none; margin-top: 20px;">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="fechaContacto">Fecha de Contacto:</label>
+                <input type="datetime-local" id="fechaContacto" {% if modo_edicion and registro.fecha_contacto %}value="{{ registro.fecha_contacto|date:'Y-m-d\TH:i' }}"{% endif %}>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="respuestaProveedor">Respuesta del Proveedor:</label>
+            <textarea id="respuestaProveedor" rows="3" placeholder="Describa la respuesta o acciones del proveedor">{% if modo_edicion %}{{ registro.respuesta_proveedor }}{% endif %}</textarea>
+        </div>
+    </div>
+</div>
+
+<!-- Sección 5: Para el Reporte -->
+<div class="sensor-section section-green">
+    <h3><span class="section-icon"><i class="fas fa-file-invoice-dollar"></i></span> 5. Información para Reporte</h3>
+    <div class="checkbox-custom" style="margin-bottom: 15px;">
+        <input type="checkbox" id="incluirReporte" checked {% if modo_edicion and not registro.incluir_en_reporte %}{% endif %}>
+        <label for="incluirReporte">Incluir en reporte de descuentos</label>
+    </div>
+    <div class="form-group">
+        <label for="observacionesReporte">Observaciones Adicionales para el Reporte:</label>
+        <textarea id="observacionesReporte" rows="3" placeholder="Información adicional relevante para justificar el descuento">{% if modo_edicion %}{{ registro.observaciones_reporte }}{% endif %}</textarea>
+    </div>
+</div>
+
+<!-- Pérdida Económica Calculada -->
+<div id="perdidaCalculadaDiv" class="perdida-card">
+    <h4><i class="fas fa-calculator"></i> Pérdida Económica Calculada</h4>
+    <div class="perdida-grid">
+        <div class="perdida-item">
+            <div class="label">Duración</div>
+            <div class="value green" id="perdidaDuracion">-</div>
+        </div>
+        <div class="perdida-item">
+            <div class="label">Pérdida en UF</div>
+            <div class="value" id="perdidaUF">-</div>
+        </div>
+        <div class="perdida-item">
+            <div class="label">Pérdida en CLP</div>
+            <div class="value" id="perdidaCLP">-</div>
+        </div>
+    </div>
+</div>
+
+<!-- Botones de acción -->
+<div class="sensor-section section-teal">
+    <h3><span class="section-icon"><i class="fas fa-save"></i></span> Confirmar Registro</h3>
+    <div class="button-group">
+        <button type="button" class="btn btn-primary" id="guardarBtn">
+            <i class="fas fa-save"></i> {% if modo_edicion %}Actualizar{% else %}Guardar{% endif %} Registro
+        </button>
+        <a href="{% url 'perdidas_economicas' %}" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Cancelar
+        </a>
+    </div>
+</div>
+
+<script>
+let sistemasData = {};
+let sensoresPorSistema = {};
+let costoHoraUF = 0;
+let costoHoraCLP = 0;
+
+function showAlert(message, type) {
+    const container = document.getElementById('alertContainer');
+    container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+    setTimeout(function() { container.innerHTML = ''; }, 5000);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Cargar sistemas y sensores cuando se selecciona un centro
+document.getElementById('centro').addEventListener('change', function() {
+    const centroId = this.value;
+    const sistemaSelect = document.getElementById('sistema');
+    const sensorSelect = document.getElementById('sensor');
+    document.getElementById('costPreview').style.display = 'none';
+    sensorSelect.innerHTML = '<option value="">Todo el sistema</option>';
+    costoHoraUF = 0;
+    costoHoraCLP = 0;
+    sistemasData = {};
+    sensoresPorSistema = {};
+
+    if (!centroId) {
+        sistemaSelect.disabled = true;
+        sistemaSelect.innerHTML = '<option value="">Primero seleccione un centro</option>';
+        return;
+    }
+
+    sistemaSelect.innerHTML = '<option value="">Cargando sistemas...</option>';
+
+    fetch('/api/perdidas/sistemas/?centro_id=' + centroId)
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                sistemaSelect.disabled = false;
+                sistemaSelect.innerHTML = '<option value="">Seleccione un sistema/modulo</option>';
+
+                // Cargar sistemas de costos
+                data.sistemas.forEach(function(sistema) {
+                    sistemasData[sistema.id] = sistema;
+                    var option = document.createElement('option');
+                    option.value = sistema.id;
+                    option.textContent = sistema.sistema + ' (' + sistema.monto_mensual_uf + ' UF/mes)';
+                    sistemaSelect.appendChild(option);
+                });
+
+                // Guardar sensores agrupados por sistema
+                sensoresPorSistema = data.sensores_por_sistema || {};
+
+                // Mostrar info de cuantos sistemas y sensores se cargaron
+                var totalSensores = 0;
+                for (var key in sensoresPorSistema) {
+                    totalSensores += sensoresPorSistema[key].length;
+                }
+                console.log('Cargados: ' + data.sistemas.length + ' sistemas de costos, ' + (data.sistemas_sensores || []).length + ' sistemas de sensores, ' + totalSensores + ' sensores');
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            sistemaSelect.innerHTML = '<option value="">Error al cargar</option>';
+        });
+});
+
+// Mostrar costos y cargar sensores cuando se selecciona un sistema
+document.getElementById('sistema').addEventListener('change', function() {
+    var sistemaId = this.value;
+    var preview = document.getElementById('costPreview');
+    var sensorSelect = document.getElementById('sensor');
+
+    // Limpiar sensores
+    sensorSelect.innerHTML = '<option value="">Todo el sistema</option>';
+
+    if (!sistemaId) {
+        preview.style.display = 'none';
+        return;
+    }
+
+    var sistema = sistemasData[sistemaId];
+    if (sistema) {
+        var valorUF = parseFloat(document.getElementById('valorUF').value) || 39762.52;
+        var mensualUF = parseFloat(sistema.monto_mensual_uf);
+        var diarioUF = mensualUF / 30;
+        var horaUF = diarioUF / 24;
+
+        // Mostrar costos con CLP calculado desde UF * valor_uf
+        document.getElementById('costoMensual').textContent =
+            mensualUF.toFixed(2) + ' UF ($' + Math.round(mensualUF * valorUF).toLocaleString('es-CL') + ' CLP)';
+        document.getElementById('costoDiario').textContent =
+            diarioUF.toFixed(4) + ' UF ($' + Math.round(diarioUF * valorUF).toLocaleString('es-CL') + ' CLP)';
+        document.getElementById('costoHora').textContent =
+            horaUF.toFixed(6) + ' UF ($' + Math.round(horaUF * valorUF).toLocaleString('es-CL') + ' CLP)';
+
+        costoHoraUF = horaUF;
+
+        preview.style.display = 'block';
+        calcularPerdida();
+
+        // Buscar sensores que coincidan con este sistema
+        var sistemaNombre = sistema.sistema.trim().toUpperCase();
+        var sensoresEncontrados = [];
+
+        // Buscar coincidencia exacta o parcial en los nombres de sistema de sensores
+        for (var nombreSistema in sensoresPorSistema) {
+            var nombreUpper = nombreSistema.trim().toUpperCase();
+            // Coincidencia: el nombre contiene parte del sistema de costos o viceversa
+            if (nombreUpper.indexOf(sistemaNombre) !== -1 ||
+                sistemaNombre.indexOf(nombreUpper) !== -1 ||
+                // Comparar palabras clave
+                tienenPalabrasEnComun(nombreUpper, sistemaNombre)) {
+                sensoresEncontrados = sensoresEncontrados.concat(sensoresPorSistema[nombreSistema]);
+            }
+        }
+
+        // Si no hay coincidencia, mostrar todos los sensores del centro
+        if (sensoresEncontrados.length === 0) {
+            for (var key in sensoresPorSistema) {
+                sensoresEncontrados = sensoresEncontrados.concat(sensoresPorSistema[key]);
+            }
+        }
+
+        // Agregar sensores al select
+        if (sensoresEncontrados.length > 0) {
+            sensoresEncontrados.forEach(function(sensor) {
+                var option = document.createElement('option');
+                option.value = sensor.id;
+                option.textContent = sensor.equipo + ' (' + sensor.tipo_medicion + ')';
+                sensorSelect.appendChild(option);
+            });
+        }
+    }
+});
+
+function tienenPalabrasEnComun(str1, str2) {
+    var palabras1 = str1.split(/[\s,]+/);
+    var palabras2 = str2.split(/[\s,]+/);
+    var palabrasClave = ['CO2', 'TURBIDEZ', 'OXIGENO', 'PH', 'CLOUD', 'DGA', 'SMA', 'EFLUENTE', 'AFLUENTE', 'NTU', 'CONDUCTIVIDAD', 'REDOX', 'ABIOTICO', 'INCUBACION', 'SMOLT'];
+
+    for (var i = 0; i < palabras1.length; i++) {
+        if (palabras1[i].length < 3) continue;
+        for (var j = 0; j < palabras2.length; j++) {
+            if (palabras2[j].length < 3) continue;
+            if (palabras1[i] === palabras2[j]) return true;
+        }
+    }
+    return false;
+}
+
+// Calcular duración y pérdida
+document.getElementById('fechaInicio').addEventListener('change', calcularPerdida);
+document.getElementById('fechaFin').addEventListener('change', calcularPerdida);
+document.getElementById('valorUF').addEventListener('change', function() {
+    // Recalcular costos del sistema y pérdida cuando cambia el valor UF
+    var sistemaSelect = document.getElementById('sistema');
+    if (sistemaSelect.value) {
+        sistemaSelect.dispatchEvent(new Event('change'));
+    }
+    calcularPerdida();
+});
+
+function calcularPerdida() {
+    var fechaInicio = document.getElementById('fechaInicio').value;
+    var fechaFin = document.getElementById('fechaFin').value;
+    var valorUF = parseFloat(document.getElementById('valorUF').value) || 39762.52;
+
+    if (!fechaInicio || !costoHoraUF || !fechaFin) {
+        document.getElementById('duracionCalculada').style.display = 'none';
+        document.getElementById('perdidaCalculadaDiv').style.display = 'none';
+        return;
+    }
+
+    var inicio = new Date(fechaInicio);
+    var fin = new Date(fechaFin);
+    var diffMs = fin - inicio;
+
+    if (diffMs <= 0) {
+        showAlert('La fecha de fin debe ser posterior a la fecha de inicio', 'error');
+        return;
+    }
+
+    var horas = diffMs / (1000 * 60 * 60);
+    var dias = horas / 24;
+
+    // Fórmula: perdida_uf = costo_hora_uf * horas
+    //          perdida_clp = perdida_uf * valor_uf_del_dia
+    var perdidaUF = horas * costoHoraUF;
+    var perdidaCLP = perdidaUF * valorUF;
+
+    document.getElementById('duracionTexto').textContent = dias.toFixed(1) + ' dias (' + horas.toFixed(1) + ' horas)';
+    document.getElementById('duracionCalculada').style.display = 'block';
+
+    document.getElementById('perdidaDuracion').textContent = dias.toFixed(1) + ' dias (' + horas.toFixed(1) + ' h)';
+    document.getElementById('perdidaUF').textContent = perdidaUF.toFixed(4) + ' UF';
+    document.getElementById('perdidaCLP').textContent = '$' + Math.round(perdidaCLP).toLocaleString('es-CL') + ' CLP';
+
+    document.getElementById('perdidaCalculadaDiv').style.display = 'block';
+}
+
+// Mostrar/ocultar campos de contacto con proveedor
+document.getElementById('contactoProveedor').addEventListener('change', function() {
+    document.getElementById('proveedorDetalles').style.display = this.checked ? 'block' : 'none';
+});
+
+// Guardar registro
+document.getElementById('guardarBtn').addEventListener('click', function() {
+    const sistema = document.getElementById('sistema').value;
+    const fechaInicio = document.getElementById('fechaInicio').value;
+    const motivo = document.getElementById('motivo').value;
+    const descripcion = document.getElementById('descripcion').value;
+    const responsable = document.getElementById('responsable').value;
+
+    if (!sistema || !fechaInicio || !motivo || !descripcion || !responsable) {
+        showAlert('Por favor complete todos los campos obligatorios', 'error');
+        return;
+    }
+
+    const formData = {
+        costo_sistema_id: sistema,
+        sensor_id: document.getElementById('sensor').value || null,
+        fecha_inicio: fechaInicio,
+        fecha_fin: document.getElementById('fechaFin').value || null,
+        motivo: motivo,
+        descripcion: descripcion,
+        responsable: responsable,
+        contacto_proveedor: document.getElementById('contactoProveedor').checked,
+        fecha_contacto: document.getElementById('fechaContacto').value || null,
+        respuesta_proveedor: document.getElementById('respuestaProveedor').value,
+        incluir_en_reporte: document.getElementById('incluirReporte').checked,
+        observaciones_reporte: document.getElementById('observacionesReporte').value,
+        valor_uf_usado: parseFloat(document.getElementById('valorUF').value) || 39762.52,
+        {% if modo_edicion %}id: {{ registro.id }}{% endif %}
+    };
+
+    this.disabled = true;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value || getCookie('csrftoken');
+    var btn = this;
+
+    fetch('/api/perdidas/guardar/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            return response.text().then(function(text) {
+                throw new Error('HTTP ' + response.status + ': ' + text.substring(0, 200));
+            });
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            showAlert('Registro guardado exitosamente. Redirigiendo...', 'success');
+            setTimeout(function() {
+                window.location.href = '{% url "perdidas_economicas" %}';
+            }, 1500);
+        } else {
+            showAlert('Error: ' + data.error, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Guardar Registro';
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        showAlert('Error al guardar: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Guardar Registro';
+    });
+});
+
+// Inicializar campos si estamos en modo edición
+{% if modo_edicion %}
+window.addEventListener('load', function() {
+    document.getElementById('centro').dispatchEvent(new Event('change'));
+    setTimeout(function() {
+        document.getElementById('sistema').value = {{ registro.costo_sistema.id }};
+        document.getElementById('sistema').dispatchEvent(new Event('change'));
+    }, 500);
+
+    {% if registro.contacto_proveedor %}
+    document.getElementById('contactoProveedor').checked = true;
+    document.getElementById('proveedorDetalles').style.display = 'block';
+    {% endif %}
+});
+{% endif %}
+</script>
+{% endblock %}

@@ -79,6 +79,16 @@
                     </div>
                 </div>
 
+                <div class="filter-group">
+                    <label>Turno</label>
+                    <div class="filter-options">
+                        <label><input type="checkbox" id="todos-turnos" checked onchange="toggleTodosTurnos()"> Todos</label>
+                        <label><input type="checkbox" class="filter-turno" value="DÍA" checked onchange="filtrarDatos()"> Día</label>
+                        <label><input type="checkbox" class="filter-turno" value="Tarde" checked onchange="filtrarDatos()"> Tarde</label>
+                        <label><input type="checkbox" class="filter-turno" value="Noche" checked onchange="filtrarDatos()"> Noche</label>
+                    </div>
+                </div>
+
                 <button onclick="resetearFiltros()" class="btn-reset">🔄 Resetear Filtros</button>
             </aside>
 
@@ -227,6 +237,30 @@
                                 <p style="color: #2c3e50; margin: 0; font-size: 13px; line-height: 1.6;">
                                     <strong>💬 En palabras simples:</strong> Este gráfico muestra cuáles son los problemas más frecuentes. 
                                     Si vemos que "Estanques en Tratamiento" aparece mucho, significa que debemos revisar ese proceso específico.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Top 5 Oxígeno Bajo -->
+                        <div class="chart-container">
+                            <h3>🔵 Top 5 - Tipos de Incidencia cuando Oxígeno está BAJO</h3>
+                            <canvas id="chartOxigenoBajo"></canvas>
+                            <div style="background: #ecf0f1; padding: 12px; border-radius: 6px; margin-top: 10px;">
+                                <p style="color: #2c3e50; margin: 0; font-size: 13px; line-height: 1.6;">
+                                    <strong>💬 En palabras simples:</strong> Muestra qué tipos de incidencia ocurren cuando el oxígeno está bajo (ej: Estanque en Flashing, Estanque en Manejo, etc.). 
+                                    Rojo = Cantidad de incidencias | Azul = Tiempo promedio de resolución (minutos).
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Top 5 Oxígeno Alto -->
+                        <div class="chart-container">
+                            <h3>🔴 Top 5 - Tipos de Incidencia cuando Oxígeno está ALTO</h3>
+                            <canvas id="chartOxigenoAlto"></canvas>
+                            <div style="background: #ecf0f1; padding: 12px; border-radius: 6px; margin-top: 10px;">
+                                <p style="color: #2c3e50; margin: 0; font-size: 13px; line-height: 1.6;">
+                                    <strong>💬 En palabras simples:</strong> Muestra qué tipos de incidencia ocurren cuando el oxígeno está alto (ej: Estanque en Manejo, Estanque en Tratamiento, etc.). 
+                                    Rojo = Cantidad de incidencias | Azul = Tiempo promedio de resolución (minutos).
                                 </p>
                             </div>
                         </div>
@@ -691,11 +725,12 @@
         console.log('Turnos Labels:', turnosLabels);
         console.log('Turnos Data:', turnosData);
 
-        // Asignar colores según el turno
+        // Asignar colores según el turno (normalizar mayúsculas/minúsculas)
         const turnosColores = turnosLabels.map(turno => {
-            if (turno === 'Día' || turno === 'Mañana') return '#3498db';
-            if (turno === 'Tarde') return '#e74c3c';
-            if (turno === 'Noche') return '#f39c12';
+            const turnoNorm = turno.toUpperCase();
+            if (turnoNorm === 'DÍA' || turnoNorm === 'MAÑANA' || turnoNorm === 'DIA') return '#3498db';
+            if (turnoNorm === 'TARDE') return '#e74c3c';
+            if (turnoNorm === 'NOCHE') return '#f39c12';
             return '#95a5a6';
         });
 
@@ -733,6 +768,90 @@
                 }, {
                     label: 'Tiempo Promedio (min)',
                     data: {{ causas_tiempo|safe }},
+                    backgroundColor: '#3498db',
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Cantidad' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Tiempo (min)' },
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Top 5 Oxígeno Bajo
+        const ctxOxigenoBajo = document.getElementById('chartOxigenoBajo').getContext('2d');
+        const chartOxigenoBajo = new Chart(ctxOxigenoBajo, {
+            type: 'bar',
+            data: {
+                labels: {{ oxigeno_bajo_labels|safe }},
+                datasets: [{
+                    label: 'Cantidad de Incidencias',
+                    data: {{ oxigeno_bajo_count|safe }},
+                    backgroundColor: '#e74c3c',
+                    yAxisID: 'y'
+                }, {
+                    label: 'Tiempo Promedio (min)',
+                    data: {{ oxigeno_bajo_tiempo|safe }},
+                    backgroundColor: '#3498db',
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Cantidad' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Tiempo (min)' },
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Top 5 Oxígeno Alto
+        const ctxOxigenoAlto = document.getElementById('chartOxigenoAlto').getContext('2d');
+        const chartOxigenoAlto = new Chart(ctxOxigenoAlto, {
+            type: 'bar',
+            data: {
+                labels: {{ oxigeno_alto_labels|safe }},
+                datasets: [{
+                    label: 'Cantidad de Incidencias',
+                    data: {{ oxigeno_alto_count|safe }},
+                    backgroundColor: '#e74c3c',
+                    yAxisID: 'y'
+                }, {
+                    label: 'Tiempo Promedio (min)',
+                    data: {{ oxigeno_alto_tiempo|safe }},
                     backgroundColor: '#3498db',
                     yAxisID: 'y1'
                 }]
@@ -922,12 +1041,20 @@
             filtrarDatos();
         }
 
+        function toggleTodosTurnos() {
+            const todosTurnos = document.getElementById('todos-turnos').checked;
+            document.querySelectorAll('.filter-turno').forEach(cb => cb.checked = todosTurnos);
+            filtrarDatos();
+        }
+
         function filtrarDatos() {
             const centrosSeleccionados = Array.from(document.querySelectorAll('.filter-centro:checked')).map(cb => cb.value);
             const todosCentros = centrosSeleccionados.length === document.querySelectorAll('.filter-centro').length;
             const mes = document.getElementById('filtro-mes').value;
             const tiposSeleccionados = Array.from(document.querySelectorAll('.filter-tipo:checked')).map(cb => cb.value);
             const todosTipos = tiposSeleccionados.length === document.querySelectorAll('.filter-tipo').length;
+            const turnosSeleccionados = Array.from(document.querySelectorAll('.filter-turno:checked')).map(cb => cb.value);
+            const todosTurnos = turnosSeleccionados.length === document.querySelectorAll('.filter-turno').length;
             
             const tabla = document.getElementById('tabla-incidencias');
             const filas = tabla.querySelectorAll('tbody tr');
@@ -942,8 +1069,12 @@
             filas.forEach(fila => {
                 const centro = fila.dataset.centro;
                 const fecha = fila.dataset.fecha;
+                const tipo = fila.dataset.tipo || '';
                 const oxigenoNivel = fila.dataset.oxigenoNivel;
                 const temperaturaNivel = fila.dataset.temperaturaNivel;
+                const parametros = fila.dataset.parametros || '';
+                const celdas = fila.querySelectorAll('td');
+                const turno = celdas.length >= 5 ? celdas[4].textContent.trim() : '';
                 
                 let mostrar = true;
                 
@@ -952,8 +1083,10 @@
                 }
                 
                 if (mes !== 'todos' && fecha) {
-                    const mesFila = new Date(fecha).getMonth() + 1;
-                    if (mesFila.toString() !== mes) {
+                    const fechaParts = fecha.split('-');
+                    const mesFila = parseInt(fechaParts[1]);
+                    const mesSeleccionado = parseInt(mes);
+                    if (mesFila !== mesSeleccionado) {
                         mostrar = false;
                     }
                 }
@@ -961,11 +1094,21 @@
                 if (!todosTipos && tiposSeleccionados.length > 0) {
                     let cumpleFiltro = false;
                     tiposSeleccionados.forEach(filtro => {
-                        if (filtro === 'Oxígeno Alto' && oxigenoNivel === 'alta') cumpleFiltro = true;
-                        if (filtro === 'Oxígeno Bajo' && oxigenoNivel === 'baja') cumpleFiltro = true;
-                        if (filtro === 'Temperatura Baja' && temperaturaNivel === 'baja') cumpleFiltro = true;
+                        if (filtro === 'Oxígeno Alto' && (tipo.includes('Oxígeno Alto') || (oxigenoNivel === 'alta' && parametros.includes('oxigeno')))) {
+                            cumpleFiltro = true;
+                        }
+                        if (filtro === 'Oxígeno Bajo' && (tipo.includes('Oxígeno Bajo') || (oxigenoNivel === 'baja' && parametros.includes('oxigeno')))) {
+                            cumpleFiltro = true;
+                        }
+                        if (filtro === 'Temperatura Baja' && (tipo.includes('TEMPERATURA') || (temperaturaNivel === 'baja' && parametros.includes('temperatura')))) {
+                            cumpleFiltro = true;
+                        }
                     });
                     if (!cumpleFiltro) mostrar = false;
+                }
+                
+                if (!todosTurnos && !turnosSeleccionados.includes(turno)) {
+                    mostrar = false;
                 }
                 
                 if (mostrar) {
@@ -1095,8 +1238,8 @@
                 }
             });
             
-            // Ordenar turnos de forma consistente - RECONOCER DÍA Y MAÑANA
-            const turnosOrden = ['Día', 'Mañana', 'Tarde', 'Noche', 'Sin turno'];
+            // Ordenar turnos de forma consistente - solo 3 turnos
+            const turnosOrden = ['DÍA', 'Tarde', 'Noche'];
             let turnosLabels = [];
             let turnosData = [];
             let turnosColores = [];
@@ -1105,8 +1248,8 @@
                 if (turnosCount[turno] && turnosCount[turno] > 0) {
                     turnosLabels.push(turno);
                     turnosData.push(turnosCount[turno]);
-                    // Usar el color correcto para Día/Mañana
-                    const color = (turno === 'Día' || turno === 'Mañana') ? '#3498db' : 
+                    // Asignar colores
+                    const color = (turno === 'DÍA') ? '#3498db' : 
                                   (turno === 'Tarde') ? '#e74c3c' : 
                                   (turno === 'Noche') ? '#f39c12' : '#95a5a6';
                     turnosColores.push(color);
@@ -1122,8 +1265,10 @@
         function resetearFiltros() {
             document.getElementById('todos-centros').checked = true;
             document.getElementById('todos-tipos').checked = true;
+            document.getElementById('todos-turnos').checked = true;
             document.querySelectorAll('.filter-centro').forEach(cb => cb.checked = true);
             document.querySelectorAll('.filter-tipo').forEach(cb => cb.checked = true);
+            document.querySelectorAll('.filter-turno').forEach(cb => cb.checked = true);
             document.getElementById('filtro-mes').value = 'todos';
             filtrarDatos();
         }

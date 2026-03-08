@@ -327,3 +327,159 @@ class ReportePlataforma(models.Model):
     
     def __str__(self):
         return f"{self.plataforma} - {self.centro.nombre} - {self.fecha_hora.strftime('%Y-%m-%d %H:%M')}"
+
+
+# --- MODELOS PARA CÁLCULO DE COSTOS Y PÉRDIDAS ECONÓMICAS ---
+
+class CostoSistema(models.Model):
+    """
+    Almacena los costos mensuales de cada sistema/módulo de sensores por piscicultura.
+    Basado en el archivo KPI_REDUCCION_COSTOS_SENSORES.xlsx
+    """
+    centro = models.ForeignKey(Centro, on_delete=models.CASCADE, related_name='costos_sistemas')
+    sistema = models.CharField(max_length=200, help_text='Nombre del sistema (ej: IDEAL CLOUD, EFLUENTE SMA, CO2 Y TURBIDEZ)')
+    
+    # Costos mensuales
+    monto_mensual_uf = models.DecimalField(max_digits=10, decimal_places=2, help_text='Costo mensual en UF')
+    monto_mensual_clp = models.DecimalField(max_digits=15, decimal_places=2, help_text='Costo mensual en CLP')
+    
+    # Costos diarios (calculados automáticamente)
+    costo_diario_uf = models.DecimalField(max_digits=10, decimal_places=6, help_text='Costo por día (24h) en UF')
+    costo_diario_clp = models.DecimalField(max_digits=15, decimal_places=2, help_text='Costo por día (24h) en CLP')
+    
+    # Costos por hora (calculados automáticamente)
+    costo_hora_uf = models.DecimalField(max_digits=10, decimal_places=6, help_text='Costo por hora en UF', null=True, blank=True)
+    costo_hora_clp = models.DecimalField(max_digits=15, decimal_places=2, help_text='Costo por hora en CLP', null=True, blank=True)
+    
+    # Información del contrato
+    plazo_contrato = models.CharField(max_length=50, default='36 MESES')
+    fecha_inicio = models.DateField()
+    fecha_termino = models.DateField()
+    cantidad_sensores = models.IntegerField(null=True, blank=True, help_text='Cantidad de sensores en este sistema')
+    
+    # Totales del contrato
+    costo_total_uf = models.DecimalField(max_digits=10, decimal_places=2, help_text='Costo total del contrato en UF')
+    costo_total_clp = models.DecimalField(max_digits=15, decimal_places=2, help_text='Costo total del contrato en CLP')
+    
+    # Metadata
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['centro', 'sistema']
+        unique_together = ['centro', 'sistema']
+        verbose_name = 'Costo de Sistema'
+        verbose_name_plural = 'Costos de Sistemas'
+    
+    def calcular_costos_derivados(self):
+        """Calcula automáticamente costos diarios y por hora desde el monto mensual UF"""
+        from decimal import Decimal
+        if self.monto_mensual_uf:
+            self.costo_diario_uf = self.monto_mensual_uf / Decimal('30')
+            self.costo_hora_uf = self.costo_diario_uf / Decimal('24')
+    
+    def save(self, *args, **kwargs):
+        # Calcular costos derivados antes de guardar
+        self.calcular_costos_derivados()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.centro.nombre} - {self.sistema} ({self.monto_mensual_uf} UF/mes)"
+
+
+class RegistroInactividad(models.Model):
+    """
+    Registra períodos de inactividad de sensores para calcular pérdidas económicas.
+    Permite documentar cuando un sensor está fuera de servicio para solicitar rebajas.
+    """
+    MOTIVO_CHOICES = [
+        ('SENSOR_APAGADO', 'Sensor apagado'),
+        ('SENSOR_MAL_ESTADO', 'Sensor en mal estado'),
+        ('NO_SUBE_DATOS', 'No sube datos a la plataforma'),
+        ('FALLA_COMUNICACION', 'Falla de comunicación'),
+        ('MANTENIMIENTO', 'En mantenimiento'),
+        ('OTRO', 'Otro motivo')
+    ]
+    
+    # Relación con el sistema de costos
+    costo_sistema = models.ForeignKey(CostoSistema, on_delete=models.CASCADE, related_name='registros_inactividad')
+    sensor = models.ForeignKey(SensorConfig, on_delete=models.CASCADE, related_name='registros_inactividad', 
+                               null=True, blank=True, help_text='Sensor específico afectado (opcional)')
+    
+    # Período de inactividad
+    fecha_inicio = models.DateTimeField(help_text='Fecha y hora de inicio de la falla')
+    fecha_fin = models.DateTimeField(null=True, blank=True, help_text='Fecha y hora de fin de la falla (dejar vacío si aún está activa)')
+    
+    # Duración calculada
+    duracion_horas = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, 
+                                         help_text='Duración total en horas')
+    duracion_dias = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                        help_text='Duración total en días')
+    
+    # Pérdida económica calculada
+    perdida_uf = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True,
+                                     help_text='Pérdida económica en UF')
+    perdida_clp = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True,
+                                      help_text='Pérdida económica en CLP')
+    valor_uf_usado = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                          help_text='Valor de la UF en CLP al momento del cálculo')
+    
+    # Detalles de la falla
+    motivo = models.CharField(max_length=50, choices=MOTIVO_CHOICES)
+    descripcion = models.TextField(help_text='Descripción detallada de la falla')
+    
+    # Seguimiento
+    contacto_proveedor = models.BooleanField(default=False, help_text='¿Se contactó al proveedor?')
+    fecha_contacto = models.DateTimeField(null=True, blank=True)
+    respuesta_proveedor = models.TextField(blank=True)
+    resuelto = models.BooleanField(default=False)
+    
+    # Documentación para reporte
+    incluir_en_reporte = models.BooleanField(default=True, help_text='Incluir en reporte de descuentos')
+    observaciones_reporte = models.TextField(blank=True, help_text='Observaciones adicionales para el reporte')
+    
+    # Metadata
+    responsable = models.CharField(max_length=200, help_text='Persona que registra la incidencia')
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-fecha_inicio', '-creado_en']
+        verbose_name = 'Registro de Inactividad'
+        verbose_name_plural = 'Registros de Inactividad'
+    
+    def calcular_duracion_y_perdida(self):
+        """Calcula la duración y pérdida económica del período de inactividad.
+        Fórmula: costo_hora_uf = monto_mensual_uf / 30 / 24
+                 perdida_uf = costo_hora_uf * horas_inactividad
+                 perdida_clp = perdida_uf * valor_uf_actual
+        """
+        from decimal import Decimal
+        if self.fecha_inicio and self.fecha_fin:
+            # Calcular duración
+            delta = self.fecha_fin - self.fecha_inicio
+            self.duracion_horas = Decimal(str(delta.total_seconds())) / Decimal('3600')
+            self.duracion_dias = self.duracion_horas / Decimal('24')
+            
+            # Calcular pérdida en UF
+            if self.costo_sistema.costo_hora_uf and self.duracion_horas:
+                self.perdida_uf = self.costo_sistema.costo_hora_uf * self.duracion_horas
+            
+            # Calcular pérdida en CLP usando valor UF real
+            if self.perdida_uf and self.valor_uf_usado:
+                self.perdida_clp = self.perdida_uf * self.valor_uf_usado
+    
+    def save(self, *args, **kwargs):
+        # Calcular duración y pérdida antes de guardar
+        self.calcular_duracion_y_perdida()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        estado = "Activa" if not self.fecha_fin else "Resuelta"
+        return f"{self.costo_sistema.centro.nombre} - {self.costo_sistema.sistema} - {self.fecha_inicio.strftime('%Y-%m-%d %H:%M')} ({estado})"
+    
+    @property
+    def esta_activa(self):
+        """Retorna True si la falla aún está activa (no tiene fecha de fin)"""
+        return self.fecha_fin is None

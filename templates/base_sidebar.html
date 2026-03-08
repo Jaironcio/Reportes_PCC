@@ -468,6 +468,11 @@
                 <i class="fas fa-video"></i>
                 <span>Cámaras</span>
             </a>
+            
+            <a href="{% url 'registrar_inactividad' %}" class="menu-item {% if active_menu == 'registrar_inactividad' %}active{% endif %}">
+                <i class="fas fa-plus-circle"></i>
+                <span>Registrar Inactividad</span>
+            </a>
 
             <div class="menu-title" style="margin-top: 15px;">Consultas</div>
             
@@ -489,6 +494,11 @@
             <a href="{% url 'consulta_plataformas' %}" class="menu-item {% if active_menu == 'consulta_plataformas' %}active{% endif %}">
                 <i class="fas fa-database"></i>
                 <span>Plataformas</span>
+            </a>
+            
+            <a href="{% url 'perdidas_economicas' %}" class="menu-item {% if active_menu == 'perdidas_economicas' %}active{% endif %}">
+                <i class="fas fa-dollar-sign"></i>
+                <span>Pérdidas Económicas</span>
             </a>
 
             <div class="menu-title" style="margin-top: 15px;">Análisis</div>

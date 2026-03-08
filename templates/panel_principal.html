@@ -299,6 +299,7 @@
         .action-card.reportes::before { background: #28a745; }
         .action-card.dashboard::before { background: #f39c12; }
         .action-card.santajuana::before { background: #20c997; }
+        .action-card.perdidas::before { background: #e67e22; }
 
         .action-card:hover::before {
             width: 100%;
@@ -325,6 +326,7 @@
         .action-card.reportes .action-icon { background: rgba(40, 167, 69, 0.1); color: #28a745; }
         .action-card.dashboard .action-icon { background: rgba(243, 156, 18, 0.1); color: #f39c12; }
         .action-card.santajuana .action-icon { background: rgba(32, 201, 151, 0.1); color: #20c997; }
+        .action-card.perdidas .action-icon { background: rgba(230, 126, 34, 0.1); color: #e67e22; }
 
         .action-card h3 {
             font-size: 18px;
@@ -506,6 +508,11 @@
                 <i class="fas fa-video"></i>
                 <span>Cámaras</span>
             </a>
+            
+            <a href="{% url 'registrar_inactividad' %}" class="menu-item">
+                <i class="fas fa-plus-circle"></i>
+                <span>Registrar Inactividad</span>
+            </a>
 
             <div class="menu-title" style="margin-top: 20px;">Consultas</div>
             
@@ -522,6 +529,11 @@
             <a href="{% url 'consulta_plataformas' %}" class="menu-item">
                 <i class="fas fa-database"></i>
                 <span>Consulta Plataformas</span>
+            </a>
+            
+            <a href="{% url 'perdidas_economicas' %}" class="menu-item">
+                <i class="fas fa-dollar-sign"></i>
+                <span>Pérdidas Económicas</span>
             </a>
 
             <div class="menu-title" style="margin-top: 20px;">Dashboards</div>
@@ -626,6 +638,15 @@
                 </div>
                 <h3>Dashboard</h3>
                 <p>Estadísticas y análisis de operaciones</p>
+                <i class="fas fa-arrow-right action-arrow"></i>
+            </a>
+
+            <a href="{% url 'perdidas_economicas' %}" class="action-card perdidas">
+                <div class="action-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <h3>Pérdidas Económicas</h3>
+                <p>Cálculo de costos por inactividad de sensores</p>
                 <i class="fas fa-arrow-right action-arrow"></i>
             </a>
 

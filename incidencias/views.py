@@ -539,23 +539,125 @@ def vista_dashboard(request):
     # Filtrar centros disponibles - SOLO Trafún, Cipreses, Liquiñe
     centros_disponibles = Centro.objects.filter(nombre__in=['Trafún', 'Liquiñe', 'Cipreses'])
     
-    # Calcular KPIs solo para centros del contexto
-    kpi_lista_final = []
+    # Calcular KPIs por centro, separados por turno
+    # Cada turno tiene su propia meta de cumplimiento (configurable)
+    turnos_config = {
+        'Día':   {'meta': 80, 'icono': 'sun', 'color': '#f39c12'},
+        'Tarde': {'meta': 80, 'icono': 'cloud-sun', 'color': '#e67e22'},
+        'Noche': {'meta': 80, 'icono': 'moon', 'color': '#2c3e50'},
+    }
     
-    for c in centros_disponibles:
-        total_c = base_query.filter(centro=c).count()
-        en_kpi = base_query.filter(centro=c, tiempo_resolucion__lte=20).count()
-        porcentaje = 0
-        if total_c > 0:
-            porcentaje = int((en_kpi / total_c) * 100)
+    # Tiempo KPI por centro+turno (minutos). Default: 20 min
+    kpi_tiempo_especial = {
+        ('Trafún', 'Día'): 35,
+    }
+    kpi_tiempo_default = 20
+    
+    # Pesos del KPI compuesto
+    peso_tiempo = 0.8
+    peso_volumen = 0.2
+    
+    kpi_por_turno = {}
+    for turno, config in turnos_config.items():
+        # Paso 1: Calcular totales por centro en este turno
+        datos_brutos = []
+        for c in centros_disponibles:
+            tiempo_kpi = kpi_tiempo_especial.get((c.nombre, turno), kpi_tiempo_default)
+            total_c = base_query.filter(centro=c, turno=turno).count()
+            en_kpi = base_query.filter(centro=c, turno=turno, tiempo_resolucion__lte=tiempo_kpi).count()
+            if total_c > 0:
+                pct_tiempo = int((en_kpi / total_c) * 100)
+            else:
+                pct_tiempo = 100
+            datos_brutos.append({
+                'centro': c,
+                'total': total_c,
+                'en_kpi': en_kpi,
+                'pct_tiempo': pct_tiempo,
+                'tiempo_kpi': tiempo_kpi,
+            })
         
-        kpi_lista_final.append({
-            'centro_nombre': c.nombre,
-            'total_incidencias': total_c,
-            'en_kpi': en_kpi,
-            'porcentaje': porcentaje,
-            'cumple_meta': porcentaje >= 80
+        # Paso 2: Calcular promedio de incidencias del turno para el % volumen
+        totales = [d['total'] for d in datos_brutos]
+        promedio_turno = sum(totales) / len(totales) if totales else 1
+        max_turno = max(totales) if totales else 1
+        if max_turno == 0:
+            max_turno = 1
+        
+        # Paso 3: Calcular % volumen y KPI compuesto con pesos dinámicos
+        kpi_turno_lista = []
+        for d in datos_brutos:
+            # % Volumen: 100% si tiene 0 incidencias, baja con curva suave
+            # Raíz cuadrada suaviza la caída: el centro con más no cae a 0%
+            ratio_vol = d['total'] / max_turno  # 0 a 1
+            pct_volumen = max(15, int(100 - (ratio_vol ** 0.5) * 85))
+            
+            # Pesos dinámicos suavizados según volumen relativo
+            # Rango comprimido: ratio va de 0.3 a 1.0 para evitar extremos
+            ratio_bruto = d['total'] / max_turno  # 0 a 1
+            ratio = 0.3 + 0.7 * ratio_bruto       # 0.3 a 1.0
+            peso_t = peso_tiempo * ratio
+            peso_v = 1 - peso_t
+            
+            # KPI Compuesto
+            kpi_compuesto = int(d['pct_tiempo'] * peso_t + pct_volumen * peso_v)
+            
+            kpi_turno_lista.append({
+                'centro_nombre': d['centro'].nombre,
+                'total_incidencias': d['total'],
+                'en_kpi': d['en_kpi'],
+                'pct_tiempo': d['pct_tiempo'],
+                'pct_volumen': pct_volumen,
+                'kpi_compuesto': kpi_compuesto,
+                'cumple_meta': kpi_compuesto >= config['meta'],
+                'tiempo_kpi': d['tiempo_kpi'],
+            })
+        
+        kpi_por_turno[turno] = {
+            'data': kpi_turno_lista,
+            'meta': config['meta'],
+            'icono': config['icono'],
+            'color': config['color'],
+        }
+
+    # --- TOP INCIDENCIAS BAJAS DE OXÍGENO (Semáforo) ---
+    o2_bajas_query = base_query.filter(oxigeno_nivel='baja').exclude(oxigeno_valor='')
+    top_o2_bajas = []
+    conteo_semaforo = {'rojo': 0, 'amarillo': 0, 'verde': 0}
+    
+    for inc in o2_bajas_query.select_related('centro', 'operario_contacto'):
+        try:
+            valor = float(inc.oxigeno_valor.replace(',', '.'))
+        except (ValueError, TypeError):
+            continue
+        
+        if valor >= 2 and valor <= 4:
+            color = 'rojo'
+            conteo_semaforo['rojo'] += 1
+        elif valor >= 5 and valor <= 6:
+            color = 'amarillo'
+            conteo_semaforo['amarillo'] += 1
+        elif valor > 6:
+            color = 'verde'
+            conteo_semaforo['verde'] += 1
+        else:
+            color = 'rojo'
+            conteo_semaforo['rojo'] += 1
+        
+        top_o2_bajas.append({
+            'centro': inc.centro.nombre if inc.centro else '-',
+            'modulo': inc.modulo,
+            'estanque': inc.estanque,
+            'valor': valor,
+            'color': color,
+            'fecha': inc.fecha_hora.strftime('%d/%m/%Y %H:%M') if inc.fecha_hora else '-',
+            'turno': inc.turno,
+            'operario': inc.operario_contacto.nombre if inc.operario_contacto else 'Operario Turno Noche',
+            'tipo_incidencia': inc.tipo_incidencia_normalizada if inc.tipo_incidencia_normalizada else '-',
         })
+    
+    # Ordenar por valor ascendente (los más críticos primero)
+    top_o2_bajas.sort(key=lambda x: x['valor'])
 
     contexto = {
         'total_incidencias': total_incidencias,
@@ -581,10 +683,14 @@ def vista_dashboard(request):
         'chart_categorias_labels_json': json.dumps(chart_categorias_labels),
         'chart_categorias_data_json': json.dumps(chart_categorias_data),
         
-        'kpi_data': kpi_lista_final,
+        'kpi_por_turno': kpi_por_turno,
         'centros': centros_disponibles.order_by('nombre'),
         'filtros_aplicados': request.GET,
-        'es_admin': request.user.is_staff
+        'es_admin': request.user.is_staff,
+        
+        # TOP Incidencias Bajas O2 (Semáforo)
+        'top_o2_bajas': top_o2_bajas,
+        'conteo_semaforo': conteo_semaforo,
     }
     
     return render(request, 'dashboard.html', contexto)
@@ -1232,20 +1338,15 @@ def dashboard_profesional(request):
         'Liquiñe': {'lat': -39.7333, 'lng': -71.8667, 'nombre': 'Liquiñe', 'ubicacion': 'Liquiñe, Los Ríos'}
     }
     
-    # Obtener meses únicos con datos
-    meses_con_datos = incidencias.annotate(
-        mes=TruncDate('fecha_hora')
-    ).values_list('mes', flat=True).distinct().order_by('mes')
-    
-    # Crear lista de meses únicos (número y nombre)
+    # Obtener meses únicos con datos - extraer directamente de fecha_hora
     meses_unicos = []
     meses_nombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
     
     meses_vistos = set()
-    for fecha in meses_con_datos:
-        if fecha:
-            mes_num = fecha.month
+    for inc in incidencias:
+        if inc.fecha_hora:
+            mes_num = inc.fecha_hora.month
             if mes_num not in meses_vistos:
                 meses_vistos.add(mes_num)
                 meses_unicos.append({
@@ -1268,7 +1369,31 @@ def dashboard_profesional(request):
     causas_count = [c['count'] for c in causas_raiz]
     causas_tiempo = [round(c['tiempo_promedio'], 1) if c['tiempo_promedio'] else 0 for c in causas_raiz]
     
-    # 2. Tiempo de Respuesta vs Objetivo (SLA: 30 minutos)
+    # 2. Top 5 Tipos de Incidencia cuando Oxígeno está BAJO (oxigeno_nivel='baja')
+    oxigeno_bajo_top = incidencias.filter(
+        oxigeno_nivel='baja'
+    ).values('tipo_incidencia_normalizada').annotate(
+        count=Count('id'),
+        tiempo_promedio=Avg('tiempo_resolucion')
+    ).order_by('-count')[:5]
+    
+    oxigeno_bajo_labels = [item['tipo_incidencia_normalizada'] or 'Sin tipo' for item in oxigeno_bajo_top]
+    oxigeno_bajo_count = [item['count'] for item in oxigeno_bajo_top]
+    oxigeno_bajo_tiempo = [round(item['tiempo_promedio'], 1) if item['tiempo_promedio'] else 0 for item in oxigeno_bajo_top]
+    
+    # 3. Top 5 Tipos de Incidencia cuando Oxígeno está ALTO (oxigeno_nivel='alta')
+    oxigeno_alto_top = incidencias.filter(
+        oxigeno_nivel='alta'
+    ).values('tipo_incidencia_normalizada').annotate(
+        count=Count('id'),
+        tiempo_promedio=Avg('tiempo_resolucion')
+    ).order_by('-count')[:5]
+    
+    oxigeno_alto_labels = [item['tipo_incidencia_normalizada'] or 'Sin tipo' for item in oxigeno_alto_top]
+    oxigeno_alto_count = [item['count'] for item in oxigeno_alto_top]
+    oxigeno_alto_tiempo = [round(item['tiempo_promedio'], 1) if item['tiempo_promedio'] else 0 for item in oxigeno_alto_top]
+    
+    # 3. Tiempo de Respuesta vs Objetivo (SLA: 30 minutos)
     tiempo_objetivo = 30  # minutos
     tiempos_por_centro = []
     cumplimiento_sla = []
@@ -1512,6 +1637,12 @@ def dashboard_profesional(request):
         'causas_labels': json.dumps(causas_labels),
         'causas_count': json.dumps(causas_count),
         'causas_tiempo': json.dumps(causas_tiempo),
+        'oxigeno_bajo_labels': json.dumps(oxigeno_bajo_labels),
+        'oxigeno_bajo_count': json.dumps(oxigeno_bajo_count),
+        'oxigeno_bajo_tiempo': json.dumps(oxigeno_bajo_tiempo),
+        'oxigeno_alto_labels': json.dumps(oxigeno_alto_labels),
+        'oxigeno_alto_count': json.dumps(oxigeno_alto_count),
+        'oxigeno_alto_tiempo': json.dumps(oxigeno_alto_tiempo),
         'tiempo_objetivo': tiempo_objetivo,
         'tiempos_por_centro': json.dumps(tiempos_por_centro),
         'cumplimiento_sla': json.dumps(cumplimiento_sla),
@@ -2954,3 +3085,21 @@ def api_estadisticas_plataformas(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+# ============================================================================
+# IMPORTAR VISTAS DE PÉRDIDAS ECONÓMICAS
+# ============================================================================
+from .views_perdidas_economicas import (
+    vista_perdidas_economicas,
+    vista_registrar_inactividad,
+    vista_editar_inactividad,
+    vista_reporte_perdidas,
+    api_obtener_sistemas_costos,
+    api_guardar_inactividad,
+    api_listar_inactividades,
+    api_eliminar_inactividad,
+    api_resolver_inactividad,
+    api_estadisticas_perdidas,
+    generar_pdf_perdidas
+)
